@@ -49,6 +49,29 @@
             box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
             display: block;
             margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .speed-control label {
+            color: #333;
+            font-weight: bold;
+        }
+
+        .speed-control select {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
         }
 
         .controls {
@@ -143,8 +166,17 @@
     <div class="game-container">
         <h1>🐍 贪吃蛇</h1>
         <div id="score">分数: 0</div>
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <canvas id="gameCanvas" width="800" height="800"></canvas>
         <div class="controls">
+            <div class="speed-control">
+                <label for="speedSelect">速度:</label>
+                <select id="speedSelect">
+                    <option value="150">慢速</option>
+                    <option value="100" selected>中速</option>
+                    <option value="60">快速</option>
+                    <option value="30">极速</option>
+                </select>
+            </div>
             <button class="btn" id="startBtn">开始游戏</button>
         </div>
         <div class="info">
@@ -165,6 +197,7 @@
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
         const startBtn = document.getElementById('startBtn');
+        const speedSelect = document.getElementById('speedSelect');
         const gameOverModal = document.getElementById('gameOver');
         const finalScoreElement = document.getElementById('finalScore');
 
@@ -177,18 +210,20 @@
         let dy = 0;
         let score = 0;
         let gameLoop = null;
-        let gameSpeed = 100;
+        let baseSpeed = 100;
+        let currentSpeed = 100;
         let isGameRunning = false;
 
         function initGame() {
             snake = [
-                { x: 10, y: 10 },
-                { x: 9, y: 10 },
-                { x: 8, y: 10 }
+                { x: 20, y: 20 },
+                { x: 19, y: 20 },
+                { x: 18, y: 20 }
             ];
             dx = 1;
             dy = 0;
             score = 0;
+            currentSpeed = parseInt(speedSelect.value);
             scoreElement.textContent = `分数: ${score}`;
             placeFood();
         }
@@ -324,11 +359,12 @@
                 scoreElement.textContent = `分数: ${score}`;
                 placeFood();
 
-                // 加速游戏
-                if (gameSpeed > 50) {
-                    gameSpeed -= 2;
+                // 根据基础速度加速游戏
+                const minSpeed = baseSpeed * 0.3;
+                if (currentSpeed > minSpeed) {
+                    currentSpeed -= baseSpeed * 0.02;
                     clearInterval(gameLoop);
-                    gameLoop = setInterval(gameStep, gameSpeed);
+                    gameLoop = setInterval(gameStep, currentSpeed);
                 }
             } else {
                 snake.pop();
@@ -349,7 +385,8 @@
 
         function resetGame() {
             gameOverModal.style.display = 'none';
-            gameSpeed = 100;
+            baseSpeed = parseInt(speedSelect.value);
+            currentSpeed = baseSpeed;
             initGame();
             startGame();
         }
@@ -358,7 +395,7 @@
             if (!isGameRunning) {
                 isGameRunning = true;
                 initGame();
-                gameLoop = setInterval(gameStep, gameSpeed);
+                gameLoop = setInterval(gameStep, currentSpeed);
                 startBtn.textContent = '暂停游戏';
                 startBtn.onclick = pauseGame;
             }
@@ -389,6 +426,14 @@
             } else if ((key === 'arrowright' || key === 'd') && dx !== -1) {
                 dx = 1;
                 dy = 0;
+            }
+        });
+
+        // 速度选择器
+        speedSelect.addEventListener('change', () => {
+            baseSpeed = parseInt(speedSelect.value);
+            if (!isGameRunning) {
+                currentSpeed = baseSpeed;
             }
         });
 
