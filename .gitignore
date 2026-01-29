@@ -1,0 +1,5 @@
+# IDE 配置文件
+.idea/
+
+# Claude Code 配置
+.claude/
