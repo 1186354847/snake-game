@@ -121,19 +121,18 @@
         #gameOver {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: rgba(0, 0, 0, 0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            padding: 20px;
+            border-radius: 20px;
+            z-index: 100;
         }
 
         .game-over-content {
             background: white;
-            padding: 40px;
+            padding: 30px;
             border-radius: 20px;
             text-align: center;
             animation: popIn 0.3s ease;
@@ -205,7 +204,7 @@
         const tileCount = canvas.width / gridSize;
 
         let snake = [];
-        let food = { x: 0, y: 0 };
+        let foods = [];
         let dx = 0;
         let dy = 0;
         let score = 0;
@@ -213,33 +212,65 @@
         let baseSpeed = 100;
         let currentSpeed = 100;
         let isGameRunning = false;
+        const maxFoodCount = 3;
+        const foodColors = ['#e74c3c', '#27ae60', '#f39c12'];
 
         function initGame() {
-            snake = [
-                { x: 20, y: 20 },
-                { x: 19, y: 20 },
-                { x: 18, y: 20 }
+            // 随机生成蛇的初始位置和方向（避免极端位置）
+            const directions = [
+                { dx: 1, dy: 0 },  // 右
+                { dx: -1, dy: 0 }, // 左
+                { dx: 0, dy: 1 },  // 下
+                { dx: 0, dy: -1 }  // 上
             ];
-            dx = 1;
-            dy = 0;
+            const randomDir = directions[Math.floor(Math.random() * directions.length)];
+            dx = randomDir.dx;
+            dy = randomDir.dy;
+
+            // 随机生成蛇头位置（留出边距，避免靠近边缘）
+            const margin = 5;
+            const headX = margin + Math.floor(Math.random() * (tileCount - margin * 2));
+            const headY = margin + Math.floor(Math.random() * (tileCount - margin * 2));
+
+            snake = [
+                { x: headX, y: headY },
+                { x: headX - dx, y: headY - dy },
+                { x: headX - dx * 2, y: headY - dy * 2 }
+            ];
+
             score = 0;
             currentSpeed = parseInt(speedSelect.value);
             scoreElement.textContent = `分数: ${score}`;
+            foods = [];
+            placeFood();
+            placeFood();
             placeFood();
         }
 
         function placeFood() {
-            food = {
-                x: Math.floor(Math.random() * tileCount),
-                y: Math.floor(Math.random() * tileCount)
-            };
+            if (foods.length >= maxFoodCount) return;
 
-            // 确保食物不会生成在蛇身上
-            for (let segment of snake) {
-                if (segment.x === food.x && segment.y === food.y) {
-                    placeFood();
-                    return;
-                }
+            let newFood;
+            let attempts = 0;
+            const maxAttempts = 100;
+
+            do {
+                newFood = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+                attempts++;
+            } while (attempts < maxAttempts && (
+                // 检查是否与蛇身重叠
+                snake.some(seg => seg.x === newFood.x && seg.y === newFood.y) ||
+                // 检查是否与其他食物重叠
+                foods.some(f => f.x === newFood.x && f.y === newFood.y)
+            ));
+
+            if (attempts < maxAttempts) {
+                // 随机分配颜色
+                newFood.color = foodColors[foods.length % foodColors.length];
+                foods.push(newFood);
             }
         }
 
@@ -262,17 +293,19 @@
                 ctx.stroke();
             }
 
-            // 绘制食物
-            ctx.fillStyle = '#e74c3c';
-            ctx.beginPath();
-            ctx.arc(
-                food.x * gridSize + gridSize / 2,
-                food.y * gridSize + gridSize / 2,
-                gridSize / 2 - 2,
-                0,
-                Math.PI * 2
-            );
-            ctx.fill();
+            // 绘制所有食物
+            foods.forEach(foodItem => {
+                ctx.fillStyle = foodItem.color || '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(
+                    foodItem.x * gridSize + gridSize / 2,
+                    foodItem.y * gridSize + gridSize / 2,
+                    gridSize / 2 - 2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            });
 
             // 绘制蛇
             snake.forEach((segment, index) => {
@@ -353,11 +386,14 @@
 
             snake.unshift(head);
 
-            // 检查是否吃到食物
-            if (head.x === food.x && head.y === food.y) {
+            // 检查是否吃到任何一个食物
+            const foodIndex = foods.findIndex(f => f.x === head.x && f.y === head.y);
+            if (foodIndex !== -1) {
+                // 吃到食物，移除它
+                foods.splice(foodIndex, 1);
                 score += 10;
                 scoreElement.textContent = `分数: ${score}`;
-                placeFood();
+                placeFood(); // 生成新食物
 
                 // 根据基础速度加速游戏
                 const minSpeed = baseSpeed * 0.3;
