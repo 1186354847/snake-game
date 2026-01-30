@@ -179,7 +179,7 @@
             <button class="btn" id="startBtn">开始游戏</button>
         </div>
         <div class="info">
-            使用 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 或 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 控制方向
+            使用 <kbd>空格</kbd> 开始/暂停游戏，<kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 或 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 控制方向
         </div>
     </div>
 
@@ -212,6 +212,7 @@
         let baseSpeed = 100;
         let currentSpeed = 100;
         let isGameRunning = false;
+        let isGameStarted = false; // 标记游戏是否已启动（非首次）
         const maxFoodCount = 3;
         const foodColors = ['#e74c3c', '#27ae60', '#f39c12'];
 
@@ -421,6 +422,7 @@
 
         function resetGame() {
             gameOverModal.style.display = 'none';
+            isGameStarted = false;
             baseSpeed = parseInt(speedSelect.value);
             currentSpeed = baseSpeed;
             initGame();
@@ -429,8 +431,12 @@
 
         function startGame() {
             if (!isGameRunning) {
+                // 首次启动才初始化
+                if (!isGameStarted) {
+                    initGame();
+                    isGameStarted = true;
+                }
                 isGameRunning = true;
-                initGame();
                 gameLoop = setInterval(gameStep, currentSpeed);
                 startBtn.textContent = '暂停游戏';
                 startBtn.onclick = pauseGame;
@@ -441,36 +447,77 @@
             isGameRunning = false;
             clearInterval(gameLoop);
             startBtn.textContent = '继续游戏';
-            startBtn.onclick = startGame;
+            startBtn.onclick = resumeGame;
         }
 
-        // 键盘控制
-        document.addEventListener('keydown', (e) => {
+        function resumeGame() {
+            if (!isGameRunning) {
+                isGameRunning = true;
+                gameLoop = setInterval(gameStep, currentSpeed);
+                startBtn.textContent = '暂停游戏';
+                startBtn.onclick = pauseGame;
+            }
+        }
+
+        // 方向控制函数
+        function handleDirectionKey(e) {
             if (!isGameRunning) return;
 
             const key = e.key.toLowerCase();
 
             if ((key === 'arrowup' || key === 'w') && dy !== 1) {
+                e.preventDefault();
                 dx = 0;
                 dy = -1;
             } else if ((key === 'arrowdown' || key === 's') && dy !== -1) {
+                e.preventDefault();
                 dx = 0;
                 dy = 1;
             } else if ((key === 'arrowleft' || key === 'a') && dx !== 1) {
+                e.preventDefault();
                 dx = -1;
                 dy = 0;
             } else if ((key === 'arrowright' || key === 'd') && dx !== -1) {
+                e.preventDefault();
                 dx = 1;
                 dy = 0;
             }
+        }
+
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            // 空格键控制开始/暂停
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (isGameRunning) {
+                    pauseGame();
+                } else if (isGameStarted) {
+                    resumeGame();
+                } else if (gameOverModal.style.display !== 'flex') {
+                    startGame();
+                }
+                return;
+            }
+
+            handleDirectionKey(e);
+        });
+
+        // 速度选择器也要监听键盘事件，保证打开时也能控制方向
+        speedSelect.addEventListener('keydown', (e) => {
+            handleDirectionKey(e);
         });
 
         // 速度选择器
         speedSelect.addEventListener('change', () => {
             baseSpeed = parseInt(speedSelect.value);
-            if (!isGameRunning) {
-                currentSpeed = baseSpeed;
+            currentSpeed = baseSpeed;
+            // 如果游戏正在运行，立即更新速度
+            if (isGameRunning) {
+                clearInterval(gameLoop);
+                gameLoop = setInterval(gameStep, currentSpeed);
             }
+            // 选择后自动失去焦点，避免影响方向键控制
+            speedSelect.blur();
         });
 
         // 开始按钮
